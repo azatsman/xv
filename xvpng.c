@@ -82,6 +82,9 @@ static CBUTT FdefCB, FnoneCB, FsubCB, FupCB, FavgCB, FPaethCB;
 /**************************************************************************/
 
 
+#include <zlib.h>
+
+
 /*******************************************/
 void CreatePNGW()
 {
