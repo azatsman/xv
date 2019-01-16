@@ -417,10 +417,17 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
     FatalError("malloc failure in WritePNG");
   }
 
+#ifdef OLDCODE
   if (setjmp(png_ptr->jmpbuf)) {
     png_destroy_write_struct(&png_ptr, &info_ptr);
     return -1;
   }
+#else
+  if (setjmp(png_jmpbuf (png_ptr))) {
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+    return -1;
+  }
+#endif
 
   png_init_io(png_ptr, fp);
 
@@ -975,7 +982,11 @@ png_xv_error(png_ptr, message)
 {
   SetISTR(ISTR_WARNING,"%s:  libpng error: %s", fbasename, message);
 
+#ifdef OLDCODE
   longjmp(png_ptr->jmpbuf, 1);
+#else
+  png_longjmp (png_ptr, 1);
+#endif
 }
 
 
