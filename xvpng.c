@@ -450,48 +450,73 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
     png_set_filter(png_ptr, 0, filter);
   }
 
+  struct  {
+    png_uint_32 width;
+    png_uint_32 height;
+    int bit_depth;
+    int color_type;
+    int interlace_type;
+    int compression_type;
+    int filter_method;
+  } _imageHeader;
+
+  
+#ifdef OLDCODE
   info_ptr->width = w;
   info_ptr->height = h;
-
   info_ptr->interlace_type = interCB.val ? 1 : 0;
+#else
+  _imageHeader.width = w;
+  _imageHeader.height = h;
+  _imageHeader.interlace_type = interCB.val ? 1 : 0;
+#endif
 
   if (colorType == F_FULLCOLOR || colorType == F_REDUCED) {
     if(ptype == PIC24) {
       linesize = 3*w;
+#ifdef OLDCODE
       info_ptr->color_type = PNG_COLOR_TYPE_RGB;
       info_ptr->bit_depth = 8;
+#else
+      _imageHeader.color_type = PNG_COLOR_TYPE_RGB;
+      _imageHeader.bit_depth = 8;
+#endif
     } else {
       linesize = w;
-      info_ptr->color_type = PNG_COLOR_TYPE_PALETTE;
+      _imageHeader.color_type = PNG_COLOR_TYPE_PALETTE;
       if(numcols <= 2)
-        info_ptr->bit_depth = 1;
+        _imageHeader.bit_depth = 1;
       else
       if(numcols <= 4)
-        info_ptr->bit_depth = 2;
+        _imageHeader.bit_depth = 2;
       else
       if(numcols <= 16)
-        info_ptr->bit_depth = 4;
+        _imageHeader.bit_depth = 4;
       else
-        info_ptr->bit_depth = 8;
+        _imageHeader.bit_depth = 8;
 
       for(i = 0; i < numcols; i++) {
         palette[i].red   = rmap[i];
         palette[i].green = gmap[i];
         palette[i].blue  = bmap[i];
       }
+#ifdef OLDCODE
       info_ptr->num_palette = numcols;
       info_ptr->palette = palette;
       info_ptr->valid |= PNG_INFO_PLTE;
+#else
+      png_set_PLTE (png_ptr, info_ptr, palette, numcols);
+#endif
     }
   }
 
   else if(colorType == F_GREYSCALE || colorType == F_BWDITHER) {
-    info_ptr->color_type = PNG_COLOR_TYPE_GRAY;
+    _imageHeader.color_type = PNG_COLOR_TYPE_GRAY;
     if(colorType == F_BWDITHER) {
       /* shouldn't happen */
       if (ptype == PIC24) FatalError("PIC24 and B/W Stipple in WritePNG()");
 
-      info_ptr->bit_depth = 1;
+      _imageHeader.bit_depth = 1;
       if(MONO(rmap[0], gmap[0], bmap[0]) > MONO(rmap[1], gmap[1], bmap[1])) {
         remap[0] = 1;
         remap[1] = 0;
@@ -505,7 +530,7 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
     else {
       if(ptype == PIC24) {
         linesize = w*3;
-        info_ptr->bit_depth = 8;
+        _imageHeader.bit_depth = 8;
       }
       else {
         int low_presc;
@@ -518,7 +543,7 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
         for(; i < 256; i++)
           remap[i]=0;
 
-        info_ptr->bit_depth = 8;
+        _imageHeader.bit_depth = 8;
 
         /* Note that this fails most of the time because of gamma */
         /* try to adjust to 4 bit prescision grayscale */
@@ -536,7 +561,7 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
           for(i = 0; i < numcols; i++) {
             remap[i] &= 0xf;
           }
-          info_ptr->bit_depth = 4;
+          _imageHeader.bit_depth = 4;
 
           /* try to adjust to 2 bit prescision grayscale */
 
@@ -552,7 +577,7 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
           for(i = 0; i < numcols; i++) {
             remap[i] &= 3;
           }
-          info_ptr->bit_depth = 2;
+          _imageHeader.bit_depth = 2;
 
           /* try to adjust to 1 bit prescision grayscale */
 
@@ -568,7 +593,7 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
           for(i = 0; i < numcols; i++) {
             remap[i] &= 1;
           }
-          info_ptr->bit_depth = 1;
+          _imageHeader.bit_depth = 1;
         }
       }
     }
@@ -585,20 +610,35 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
     text->text = software;
     text->text_length = strlen(text->text);
 
+#ifdef OLDCODE
     info_ptr->max_text = 1;
     info_ptr->num_text = 1;
     info_ptr->text = text;
+#else
+    png_set_text (png_ptr, info_ptr, text, 1);
+#endif
+    free (text);
   }
 
   Display_Gamma = gDial.val;  /* Save the current gamma for loading */
 
+#ifdef OLDCODE
   info_ptr->gamma = 1.0/gDial.val;
   info_ptr->valid |= PNG_INFO_gAMA;
+#else
+  /*  png_set_valid (png_ptr, info_ptr, PNG_INFO_gAMA); */
+  png_set_gAMA (png_ptr, info_ptr, 1.0/gDial.val);
+#endif
 
   png_write_info(png_ptr, info_ptr);
 
+#ifdef OLDCODE
   if(info_ptr->bit_depth < 8)
     png_set_packing(png_ptr);
+#else
+  if (png_get_bit_depth (png_ptr, info_ptr) < 8)
+    png_set_packing(png_ptr);
+#endif
 
   pass=png_set_interlace_handling(png_ptr);
 
@@ -609,7 +649,7 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
     int j;
     p = pic;
     for(j = 0; j < h; j++) {
-      if(info_ptr->color_type == PNG_COLOR_TYPE_GRAY) {
+      if (png_get_color_type (png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY) {
         int k;
         for(k = 0; k < w; k++)
           png_line[k] = ptype==PIC24 ? MONO(p[k*3], p[k*3+1], p[k*3+2]) :
@@ -623,122 +663,117 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
   }
 
   free(png_line);
-
-  if (text)
   {
-    if (picComments && strlen(picComments) &&
-        (savecmnt = (char *)malloc((strlen(picComments) + 1)*sizeof(char)))) {
-      png_textp tp;
-      char *comment, *key;
+    int numText = 0;
+    int maxNumText = 16;
+    if ((text = (png_textp) malloc (maxNumText * sizeof(png_text)))) {
+      if (picComments &&
+	  strlen (picComments) &&
+	  (savecmnt = (char *) malloc ((strlen(picComments) + 1)*sizeof(char)))) {
+	png_textp tp;
+	char *comment, *key;
+	strcpy (savecmnt, picComments);
+	key     = savecmnt;
+	tp      = text;
+	comment = strchr(key, ':');
+	do  {
+	  /* Allocate a larger structure for comments if necessary */
+	  if (numText >= maxNumText) {
+	    maxNumText *= 2;
+	    if ((tp = realloc(text, maxNumText * sizeof(png_text))) == NULL)
+	      break;
+	    else {
+	      text = tp;
+	      tp = &text [numText];
+	    }
+	  }
+	  /* See if it looks like a PNG keyword from LoadPNG */
+	  /* GRR: should test for strictly < 80, right? (key = 1-79 chars only) */
+	  if (comment && comment[1] == ':' && comment - key <= 80) {
+	    *(comment++) = '\0';
+	    *(comment++) = '\0';
 
-      strcpy(savecmnt, picComments);
-      key = savecmnt;
-      tp = text;
-      info_ptr->num_text = 0;
+	    /* If the comment is the 'Software' chunk XV writes, we remove it,
+	       since we have already stored one */
+	    if (strcmp(key, "Software") == 0 && strncmp(comment, "XV", 2) == 0) {
+	      key = strchr(comment, '\n');
+	      if(key)
+		key++; /* skip \n */
+	      comment = strchr(key, ':');
+	    }
+	    /* We have another keyword and/or comment to write out */
+	    else {
+	      tp->key  = key;
+	      tp->text = comment;
+	      /* We have to find the end of this comment, and the next keyword
+		 if there is one */
+	      for (; NULL != (key = comment = strchr(comment, ':')); comment++)
+		if (key[1] == ':')
+		  break;
+	      /* It looks like another keyword, go backward to the beginning */
+	      if (key) {
+		while(key > tp->text && *key != '\n')
+		  key--;
 
-      comment = strchr(key, ':');
+		if (key > tp->text && comment - key <= 80) {
+		  *key = '\0';
+		  key++;
+		}
+	      }
 
-      do  {
-        /* Allocate a larger structure for comments if necessary */
-        if (info_ptr->num_text >= info_ptr->max_text)
-        {
-          if ((tp =
-              realloc(text, (info_ptr->num_text + 2)*sizeof(png_text))) == NULL)
-          {
-            break;
-          }
-          else
-          {
-            text = tp;
-            tp = &text[info_ptr->num_text];
-            info_ptr->max_text += 2;
-          }
-        }
+	      tp->text_length = strlen(tp->text);
 
-        /* See if it looks like a PNG keyword from LoadPNG */
-        /* GRR: should test for strictly < 80, right? (key = 1-79 chars only) */
-        if(comment && comment[1] == ':' && comment - key <= 80) {
-          *(comment++) = '\0';
-          *(comment++) = '\0';
+	      /* We don't have another keyword, so remove the last newline */
+	      if (!key && tp->text[tp->text_length - 1] == '\n')
+		{
+		  tp->text[tp->text_length] = '\0';
+		  tp->text_length--;
+		}
 
-          /* If the comment is the 'Software' chunk XV writes, we remove it,
-             since we have already stored one */
-          if (strcmp(key, "Software") == 0 && strncmp(comment, "XV", 2) == 0) {
-            key = strchr(comment, '\n');
-            if(key)
-              key++; /* skip \n */
-            comment = strchr(key, ':');
-          }
-          /* We have another keyword and/or comment to write out */
-          else {
-            tp->key = key;
-            tp->text = comment;
+	      tp->compression = tp->text_length > 640 ? 0 : -1;
+	      numText++;
+	      tp++;
+	    }
+	  }
+	  /* Just a generic comment:  make sure line-endings are valid for PNG */
+	  else {
+	    char *p=key, *q=key;     /* only deleting chars, not adding any */
 
-            /* We have to find the end of this comment, and the next keyword
-               if there is one */
-            for (; NULL != (key = comment = strchr(comment, ':')); comment++)
-              if (key[1] == ':')
-                break;
-
-            /* It looks like another keyword, go backward to the beginning */
-            if (key) {
-              while(key > tp->text && *key != '\n')
-                key--;
-
-              if (key > tp->text && comment - key <= 80) {
-                *key = '\0';
-                key++;
-              }
-            }
-
-            tp->text_length = strlen(tp->text);
-
-            /* We don't have another keyword, so remove the last newline */
-            if (!key && tp->text[tp->text_length - 1] == '\n')
-            {
-              tp->text[tp->text_length] = '\0';
-              tp->text_length--;
-            }
-
-            tp->compression = tp->text_length > 640 ? 0 : -1;
-            info_ptr->num_text++;
-            tp++;
-          }
-        }
-        /* Just a generic comment:  make sure line-endings are valid for PNG */
-        else {
-          char *p=key, *q=key;     /* only deleting chars, not adding any */
-
-          while (*p) {
-            if (*p == CR) {        /* lone CR or CR/LF:  EOL either way */
-              *q++ = LF;           /* LF is the only allowed PNG line-ending */
-              if (p[1] == LF)      /* get rid of any original LF */
-                ++p;
-            } else if (*p == LF)   /* lone LF */
-              *q++ = LF;
-            else
-              *q++ = *p;
-            ++p;
-          }
-          *q = '\0';               /* unnecessary...but what the heck */
-          tp->key = "Comment";
-          tp->text = key;
-          tp->text_length = q - key;
-          tp->compression = tp->text_length > 750 ? 0 : -1;
-          info_ptr->num_text++;
-          key = NULL;
-        }
-      } while (key && *key);
+	    while (*p) {
+	      if (*p == CR) {        /* lone CR or CR/LF:  EOL either way */
+		*q++ = LF;           /* LF is the only allowed PNG line-ending */
+		if (p[1] == LF)      /* get rid of any original LF */
+		  ++p;
+	      } else if (*p == LF)   /* lone LF */
+		*q++ = LF;
+	      else
+		*q++ = *p;
+	      ++p;
+	    }
+	    *q = '\0';               /* unnecessary...but what the heck */
+	    tp->key = "Comment";
+	    tp->text = key;
+	    tp->text_length = q - key;
+	    tp->compression = tp->text_length > 750 ? 0 : -1;
+	    numText++;
+	    key = NULL;
+	  }
+	} while (key && *key);
+      }
     }
-    else
-    {
-      info_ptr->num_text = 0;
-    }
+    png_set_text (png_ptr, info_ptr, text, numText);
   }
-  info_ptr->text = text;
 
-  png_convert_from_time_t(&(info_ptr->mod_time), time(NULL));
-  info_ptr->valid |= PNG_INFO_tIME;
+
+  {
+
+    png_time pngTime;
+
+    png_convert_from_time_t (&pngTime , time (NULL));
+    png_set_tIME (png_ptr, info_ptr, &pngTime);
+    
+    /*********   info_ptr->valid |= PNG_INFO_tIME; */
+  }
 
   png_write_end(png_ptr, info_ptr);
   fflush(fp);   /* just in case we core-dump before finishing... */
@@ -747,7 +782,11 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
   {
     free(text);
     /* must do this or png_destroy_write_struct() 0.97+ will free text again: */
-    info_ptr->text = (png_textp)NULL;
+#ifdef OLDCODE
+    info_ptr->text = (png_textp) NULL;
+#else
+    png_set_text (png_ptr, info_ptr, (png_textp) NULL, 0);
+#endif
     if (savecmnt)
     {
       free(savecmnt);
@@ -814,7 +853,7 @@ int LoadPNG(fname, pinfo)
     FatalError("malloc failure in LoadPNG");
   }
 
-  if(setjmp(png_ptr->jmpbuf)) {
+  if (setjmp(png_jmpbuf (png_ptr))) {
     fclose(fp);
     png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
     if(!read_anything) {
@@ -833,15 +872,15 @@ int LoadPNG(fname, pinfo)
   png_init_io(png_ptr, fp);
   png_read_info(png_ptr, info_ptr);
 
-  pinfo->w = pinfo->normw = info_ptr->width;
-  pinfo->h = pinfo->normh = info_ptr->height;
+  pinfo->w = pinfo->normw = png_get_image_width  (png_ptr, info_ptr);
+  pinfo->h = pinfo->normh = png_get_image_height (png_ptr, info_ptr);
 
   pinfo->frmType = F_PNG;
 
-  sprintf(pinfo->fullInfo, "PNG, %d bit ",
-          info_ptr->bit_depth * info_ptr->channels);
+  sprintf (pinfo->fullInfo, "PNG, %d bit ", png_get_bit_depth (png_ptr, info_ptr) *
+	   png_get_channels (png_ptr, info_ptr));
 
-  switch(info_ptr->color_type) {
+  switch (png_get_color_type (png_ptr, info_ptr)) {
     case PNG_COLOR_TYPE_PALETTE:
       strcat(pinfo->fullInfo, "palette color");
       break;
@@ -865,21 +904,28 @@ int LoadPNG(fname, pinfo)
 
   sprintf(pinfo->fullInfo + strlen(pinfo->fullInfo),
 	  ", %sinterlaced. (%d bytes)",
-	  info_ptr->interlace_type ? "" : "non-", filesize);
+	  png_get_interlace_type (png_ptr, info_ptr) ? "" : "non-", filesize);
 
-  sprintf(pinfo->shrtInfo, "%dx%d PNG", info_ptr->width, info_ptr->height);
+  sprintf (pinfo->shrtInfo, "%dx%d PNG",
+	   png_get_image_width  (png_ptr, info_ptr),
+	   png_get_image_height (png_ptr, info_ptr));
 
-  if (info_ptr->bit_depth < 8)
+  if (png_get_bit_depth (png_ptr, info_ptr) < 8)
       png_set_packing(png_ptr);
 
-  if (info_ptr->valid & PNG_INFO_gAMA)
-    png_set_gamma(png_ptr, Display_Gamma, info_ptr->gamma);
+  if (png_get_valid (png_ptr, info_ptr, PNG_INFO_gAMA))
+    png_set_gamma(png_ptr, Display_Gamma, 1.0 / gDial.val);
   else
     png_set_gamma(png_ptr, Display_Gamma, 0.45);
 
-  if (info_ptr->valid & PNG_INFO_bKGD)
-    png_set_background(png_ptr, &info_ptr->background,
+  if (png_get_valid (png_ptr, info_ptr, PNG_INFO_bKGD)) {
+
+    png_color_16p backGround;
+
+    png_get_bKGD (png_ptr, info_ptr, &backGround);
+    png_set_background(png_ptr, backGround,
                        PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
+  }
   else {
     my_background.red = my_background.green = my_background.blue =
       my_background.gray = 0;
@@ -887,13 +933,13 @@ int LoadPNG(fname, pinfo)
                        0, Display_Gamma);
   }
 
-  if (info_ptr->bit_depth == 16)
-    png_set_strip_16(png_ptr);
+  if (png_get_bit_depth (png_ptr, info_ptr) == 16)
+    png_set_strip_16 (png_ptr);
 
-  if (info_ptr->color_type == PNG_COLOR_TYPE_GRAY ||
-      info_ptr->color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+  if (png_get_color_type (png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY ||
+      png_get_color_type (png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY_ALPHA)
   {
-    if (info_ptr->bit_depth == 1)
+    if (png_get_bit_depth (png_ptr, info_ptr) == 1)
       pinfo->colType = F_BWDITHER;
     else
       pinfo->colType = F_GREYSCALE;
@@ -904,24 +950,29 @@ int LoadPNG(fname, pinfo)
 
   png_read_update_info(png_ptr, info_ptr);
 
-  if(info_ptr->color_type == PNG_COLOR_TYPE_RGB ||
-     info_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA) {
+  if(png_get_color_type (png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB ||
+     png_get_color_type (png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB_ALPHA) {
     linesize = pinfo->w * 3;
     pinfo->colType = F_FULLCOLOR;
     pinfo->type = PIC24;
   } else {
     linesize = pinfo->w;
     pinfo->type = PIC8;
-    if(info_ptr->color_type == PNG_COLOR_TYPE_GRAY ||
-       info_ptr->color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+    if (png_get_color_type (png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY ||
+	png_get_color_type (png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY_ALPHA) {
       for(i = 0; i < 256; i++)
         pinfo->r[i] = pinfo->g[i] = pinfo->b[i] = i;
     } else {
+
+      png_colorp  plt;
+      int nPlt;
+      png_get_PLTE (png_ptr, info_ptr, &plt, &nPlt);
       pinfo->colType = F_FULLCOLOR;
-      for(i = 0; i < info_ptr->num_palette; i++) {
-        pinfo->r[i] = info_ptr->palette[i].red;
-        pinfo->g[i] = info_ptr->palette[i].green;
-        pinfo->b[i] = info_ptr->palette[i].blue;
+      
+      for(i = 0; i < nPlt; i++) {
+        pinfo->r[i] = plt[i].red;
+        pinfo->g[i] = plt[i].green;
+        pinfo->b[i] = plt[i].blue;
       }
     }
   }
@@ -944,28 +995,34 @@ int LoadPNG(fname, pinfo)
   }
 
   png_read_end(png_ptr, info_ptr);
+  
+  {
+    png_textp pTxt;
+    int nTxt;
 
-  if(info_ptr->num_text > 0) {
-    commentsize = 1;
+    png_get_text (png_ptr, info_ptr, &pTxt, &nTxt);
 
-    for(i = 0; i < info_ptr->num_text; i++)
-      commentsize += strlen(info_ptr->text[i].key) + 1 +
-                     info_ptr->text[i].text_length + 2;
+    if(nTxt > 0) {
+      commentsize = 1;
 
-    if((pinfo->comment = malloc(commentsize)) == NULL) {
-      png_warning(png_ptr,"can't allocate comment string");
-    }
-    else {
-      pinfo->comment[0] = '\0';
-      for(i = 0; i < info_ptr->num_text; i++) {
-        strcat(pinfo->comment, info_ptr->text[i].key);
-        strcat(pinfo->comment, "::");
-        strcat(pinfo->comment, info_ptr->text[i].text);
-        strcat(pinfo->comment, "\n");
+      for(i = 0; i < nTxt; i++)
+	commentsize += strlen(pTxt[i].key) + 1 +
+	  pTxt[i].text_length + 2;
+
+      if((pinfo->comment = malloc(commentsize)) == NULL) {
+	png_warning(png_ptr,"can't allocate comment string");
+      }
+      else {
+	pinfo->comment[0] = '\0';
+	for(i = 0; i < nTxt; i++) {
+	  strcat(pinfo->comment, pTxt[i].key);
+	  strcat(pinfo->comment, "::");
+	  strcat(pinfo->comment, pTxt[i].text);
+	  strcat(pinfo->comment, "\n");
+	}
       }
     }
   }
-
   png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
 
   fclose(fp);
