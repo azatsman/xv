@@ -989,7 +989,7 @@ int LoadPNG(fname, pinfo)
     png_error(png_ptr, "can't allocate space for PNG image");
   }
 
-  png_start_read_image(png_ptr);
+  /*  png_start_read_image(png_ptr); */
 
   for(i = 0; i < pass; i++) {
     byte *p = pinfo->pic;
