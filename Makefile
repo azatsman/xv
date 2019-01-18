@@ -41,6 +41,7 @@ buildit: all
 ### if, for whatever reason, you're unable to get the JPEG library to compile
 ### on your machine, *COMMENT OUT* the following lines
 ###
+
 JPEG    = -DDOJPEG
 JPEGDIR = jpeg
 JPEGINC = -I$(JPEGDIR)
@@ -80,13 +81,14 @@ MYFLAGS = -DUSE_GETCWD
 ### if, for whatever reason, you're unable to get the TIFF library to compile
 ### on your machine, *COMMENT OUT* the following lines
 ###
-TIFF    = -DDOTIFF
-TIFFDIR = tiff
-TIFFINC = -I$(TIFFDIR)
-TIFFLIB = $(TIFFDIR)/libtiff.a
-$(TIFFLIB):
-	( cd $(TIFFDIR) ; make CC='$(CC)' )
 
+######    TIFF    = -DDOTIFF
+######    TIFFDIR = tiff
+######    TIFFINC = -I$(TIFFDIR)
+######    TIFFLIB = $(TIFFDIR)/libtiff.a
+######    $(TIFFLIB):
+######    	( cd $(TIFFDIR) ; make CC='$(CC)' )
+######    
 
 ###
 ### if, for whatever reason, you're unable to get the PDS/VICAR support

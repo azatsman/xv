@@ -597,8 +597,15 @@ int WritePNG(fp, pic, ptype, w, h, rmap, gmap, bmap, numcols)
         }
       }
     }
+    png_set_IHDR (png_ptr, info_ptr,
+		  _imageHeader.width,
+		  _imageHeader.height,
+		  _imageHeader.bit_depth,
+		  _imageHeader.color_type,
+		  _imageHeader.interlace_type,
+		  _imageHeader.compression_type,
+		  _imageHeader.filter_method);
   }
-
   else
     png_error(png_ptr, "Unknown colorstyle in WritePNG");
 
