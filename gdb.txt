@@ -1,0 +1,4 @@
+file xv
+b main
+run /bs/pix/scans/inputs/1985/s002.png
+

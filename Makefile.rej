@@ -1,0 +1,23 @@
+*** Makefile	Mon Jan 23 13:20:54 1995
+--- Makefile	Tue Jun  4 00:26:17 1996
+***************
+*** 205,213 ****
+  
+  CFLAGS = $(CCOPTS) $(JPEG) $(JPEGINC) $(TIFF) $(TIFFINC) $(PDS) \
+  	$(NODIRENT) $(VPRINTF) $(TIMERS) $(UNIX) $(BSDTYPES) $(RAND) \
+! 	$(DXWM) $(MCHN)
+  
+! LIBS = -lX11 $(JPEGLIB) $(TIFFLIB) -lm
+  
+  OBJS = 	xv.o xvevent.o xvroot.o xvmisc.o xvimage.o xvcolor.o xvsmooth.o \
+  	xv24to8.o xvgif.o xvpm.o xvinfo.o xvctrl.o xvscrl.o xvalg.o \
+--- 208,216 ----
+  
+  CFLAGS = $(CCOPTS) $(JPEG) $(JPEGINC) $(TIFF) $(TIFFINC) $(PDS) \
+  	$(NODIRENT) $(VPRINTF) $(TIMERS) $(UNIX) $(BSDTYPES) $(RAND) \
+! 	$(DXWM) $(MCHN) $(PNG) $(PNGINC) $(ZLIBINC)
+  
+! LIBS = -lX11 $(JPEGLIB) $(TIFFLIB) $(PNGLIB) $(ZLIBLIB) -lm
+  
+  OBJS = 	xv.o xvevent.o xvroot.o xvmisc.o xvimage.o xvcolor.o xvsmooth.o \
+  	xv24to8.o xvgif.o xvpm.o xvinfo.o xvctrl.o xvscrl.o xvalg.o \
